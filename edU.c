@@ -10,7 +10,7 @@ typedef enum
     true
 } boolean;
 
-/* struttura per ogni singolo stringa */
+/* struttura per ogni singola stringa */
 typedef struct node
 {
     char Array[lungh_testo];
@@ -18,48 +18,51 @@ typedef struct node
     struct node *prec;
 
 } t_node;
+
 /* lista di comandi */
 typedef struct command
 {
-    char istruzione;                        /* carattere istruzione */
+    char istruzione;                        /* carattere per identificare l'istruzione */
     long int ind1, ind2, mod_count;         /* indici delle righe modificate */
-    t_node *nuova_prima, *nuova_ultima;     /* puntatori alla nuova prima e ultima riga modificata */
+    t_node *nuova_prima, *nuova_ultima;     /* puntatori alla nuova prima e ultima riga modificate */
     t_node *vecchia_prima, *vecchia_ultima; /* puntatori alla prima e ultima riga modificata */
     struct command *next;                   /* prossimo comando */
-    struct command *prec;
+    struct command *prec;                   /* comando precedente */
 } t_command;
 
-void Change(char *istr);
-void Print(char *istr);
-void Delate(char *istr);
-void Undo(long int undo);
-void Redo(long int redo);
-void SvuotaLista();
+/* sottofunzioni */
+void Change(char *istr);            /* per gestire il comando c = change */
+void Print(char *istr);             /* per gestire il comando p = printg */
+void Delate(char *istr);            /* per gestire il comando d = delate */
+void Undo(long int undo);           /* per gestire il comando u = undo */
+void Redo(long int redo);           /* per gestire il comando r = redo */
+void SvuotaLista();                 /* per cancellare la lista di comandi quando non sono più possibili undo, dopo un comando di change o delate */
 
 
-long int count = 0; /* numero frasi */
-t_node *first_line = NULL;
-t_node *last_line = NULL;
-t_command *newest_command = NULL;
-t_command *current_command = NULL;
-t_command *oldest_command = NULL;
-long int max_undo = 0;
-long int max_redo = 0;
+long int count = 0;                  /* numero frasi */
+t_node *first_line = NULL;           /* prima stringa */
+t_node *last_line = NULL;            /* ultima stringa */
+t_command *newest_command = NULL;    /* primo comando */
+t_command *current_command = NULL;   /* puntatore per tener traccia del comando attuale */
+t_command *oldest_command = NULL;    /* ultimo comando */
+long int max_undo = 0;               /* numero di undo, in base al numero di comandi svolti */
+long int max_redo = 0;               /* numero di redo, in base al numero di undo svolti*/
 
 int main()
 {
     boolean Fine = false;
     boolean Trovato = false;
-    char Istruzione[100];
-    long int zeta = 0;    /* calcolo undo */
-    long int esse = 0;    /* calcolo redo */
-    long int zeta2 = 0;
-    long int esse2 = 0;
+    char Istruzione[100];   /* dove inserisco il comando letto */ 
+    /* per ottimizzare i tempi raggruppo il numero di undo e redo per svolgerli insieme direttamente e non in modo prettamente sequenziale */
+    long int zeta = 0;      /* per calcolo numero di undo */
+    long int esse = 0;      /* per calcolo numero di redo */
+    long int zeta2 = 0;     /* variabile ausiliaria per calcolo di undo */
+    long int esse2 = 0;     /* variabile ausiliaria per calcolo di redo */
     char punto[3];
 
     while (Fine == false)
     {
-        fgets(Istruzione, 100, stdin); /* basta 100 */
+        fgets(Istruzione, 100, stdin); 
 
         for (int i = 0; ((Trovato == false) && (i < 100)); i++)
         {
@@ -75,7 +78,7 @@ int main()
                 }
                 SvuotaLista();
                 Change(Istruzione);
-                fgets(punto, 3, stdin); /* prendo il punto */
+                fgets(punto, 3, stdin); //prendo il punto di fine comando 
                 max_undo++;
                 max_redo = 0;
                 esse = 0;
@@ -181,18 +184,19 @@ void Change(char *istr)
     if (rig1 > count){
         /* inserimento nuovo: o in testa o coda */
         if (count == 0){
-            /* da vuota inserisco la nuova prima frase */
+            /* lista vuota: inserisco la nuova prima frase, in testa */
             first_line = nuova_riga;
             nuova_riga->prec = NULL;
             current_command->vecchia_ultima = NULL;
         }
         else{
-            /* attacco alla coda le nuove frasi */
+            /* lista non vuota: attacco alla coda le nuove frasi */
             new_command->vecchia_ultima = last_line;
             nuova_riga->prec = last_line;
             last_line->next = nuova_riga;
         }
         current_command->vecchia_prima = NULL;
+        
         for (int i = 1; i < nrig; ++i){
             /* creo le nuove righe */
             nuova_riga->next = malloc(sizeof(t_node));
@@ -226,7 +230,8 @@ void Change(char *istr)
         }
         long int Passi = 1;
         for (long int i = 1; i < nrig; ++i)
-        { /* leggi le rimanenti righe */
+        { 
+            /* leggo le rimanenti righe */
             nuova_riga->next = malloc(sizeof(t_node));
             nuova_riga->next->prec = nuova_riga;
             nuova_riga = nuova_riga->next;
@@ -242,11 +247,11 @@ void Change(char *istr)
         if (riga_da_cambiare->next == NULL){
             /* sostituisco anche la coda quindi la aggiorno */
             last_line = nuova_riga;
-            nrig -= Passi; /* tolgo il numero di righe che ho sostituito e non aggiunto al conteggio */
+            nrig -= Passi;  //tolgo il numero di righe che ho sostituito e non aggiunto al conteggio 
             current_command->mod_count = nrig;
         }
         else{
-            /* sostituisco in mezzo quindi riaggancio */
+            /* sostituisco in mezzo quindi riaggancio alla lista */
             nuova_riga->next->prec = nuova_riga;
         }
     }
@@ -325,7 +330,7 @@ void Delate(char *istr)
     }
     else if (rig1 == 0){
         if (rig1 < rig2){
-            /* tipo 0,Xd */
+            /* ad esempio 0,Xd */
             rig1++;
             nrig--;
         }
@@ -354,7 +359,7 @@ void Delate(char *istr)
         }
         current_command->vecchia_prima = riga_da_eliminare;
         t_node *riga_precedente = riga_da_eliminare->prec;
-        long int Passi = 1; /* conto quante ne sto eliminando effettivamente */
+        long int Passi = 1;  //conto quante ne sto eliminando effettivamente 
         for (long int i = rig1; ((i < rig2) && (riga_da_eliminare->next != NULL)); ++i){
             riga_da_eliminare = riga_da_eliminare->next;
             Passi++;
@@ -379,7 +384,7 @@ void Delate(char *istr)
             riga_precedente->next = riga_da_eliminare->next;
             riga_da_eliminare->next->prec = riga_precedente;
         }
-        current_command->mod_count = Passi; /* mi salvo il numero effettivo di righe eliminate */
+        current_command->mod_count = Passi;  //mi salvo il numero effettivo di righe eliminate 
     }
     /* aggiorno numero righe */
     count -= new_command->mod_count;
@@ -461,7 +466,7 @@ void Undo(long int undo)
                 current_command->nuova_ultima->prec = current_command->vecchia_ultima;
                 current_command->vecchia_ultima->next = current_command->nuova_ultima;
             }
-            /* risistemo il conteggio */
+            /* aggiorno il numero di righe */
             count += current_command->mod_count;
 
         }
@@ -476,7 +481,6 @@ void Undo(long int undo)
 
 void Redo(long int redo)
 {
-
     if (current_command == NULL){ /* ho fatto undo dell'ultima istruzione disponibile */
         current_command = oldest_command;
     }
@@ -487,7 +491,6 @@ void Redo(long int redo)
 
     while (redo > 0)
     {
-
         if (current_command->istruzione == 'c')
         {
             if (current_command->vecchia_prima == NULL) {
@@ -551,7 +554,7 @@ void Redo(long int redo)
                 current_command->nuova_prima->next = current_command->nuova_ultima;
                 current_command->nuova_ultima->prec = current_command->nuova_prima;
             }
-            /* aggiorno numero */
+            /* aggiorno numero di righe */
             count -= current_command->mod_count;
         }
         redo--;
